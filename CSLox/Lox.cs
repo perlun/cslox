@@ -6,7 +6,10 @@ namespace CSLox
 {
     public static class Lox
     {
+        private static readonly Interpreter interpreter = new Interpreter();
+
         private static bool hadError = false;
+        static bool hadRuntimeError = false;
 
         public static void Main(string[] args)
         {
@@ -34,6 +37,11 @@ namespace CSLox
             if (hadError)
             {
                 Environment.Exit(65);
+            }
+
+            if (hadRuntimeError)
+            {
+                Environment.Exit(70);
             }
         }
 
@@ -63,12 +71,19 @@ namespace CSLox
                 return;
             }
 
-            Console.WriteLine(new AstPrinter().Print(expression));
+            interpreter.Interpret(expression);
         }
 
         internal static void Error(int line, string message)
         {
             Report(line, "", message);
+        }
+
+        internal static void RuntimeError(RuntimeError error)
+        {
+            Console.WriteLine($"{error.Message}\n" +
+                              "[line {error.token.line}]");
+            hadRuntimeError = true;
         }
 
         private static void Report(int line, string where, string message)
