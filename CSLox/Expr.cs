@@ -1,13 +1,33 @@
+using System.Collections.Generic;
+
 namespace CSLox
 {
     internal abstract class Expr
     {
         internal interface Visitor<R>
         {
+            R VisitAssignExpr(Assign expr);
             R VisitBinaryExpr(Binary expr);
             R VisitGroupingExpr(Grouping expr);
             R VisitLiteralExpr(Literal expr);
             R VisitUnaryExpr(Unary expr);
+            R VisitVariableExpr(Variable expr);
+        }
+
+        internal class Assign : Expr
+        {
+            internal readonly Token name;
+            internal readonly Expr value;
+
+            internal Assign(Token name, Expr value) {
+                this.name = name;
+                this.value = value;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitAssignExpr(this);
+            }
         }
 
         internal class Binary : Expr
@@ -69,6 +89,20 @@ namespace CSLox
             internal override R Accept<R>(Visitor<R> visitor)
             {
                 return visitor.VisitUnaryExpr(this);
+            }
+        }
+
+        internal class Variable : Expr
+        {
+            internal readonly Token name;
+
+            internal Variable(Token name) {
+                this.name = name;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitVariableExpr(this);
             }
         }
 

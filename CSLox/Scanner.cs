@@ -191,7 +191,7 @@ namespace CSLox
             Advance();
 
             // Trim the surrounding quotes.
-            string value = source[(start + 1)..current];
+            string value = source[(start + 1)..(current - 1)];
             AddToken(STRING, value);
         }
 

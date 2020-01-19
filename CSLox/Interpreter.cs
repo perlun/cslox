@@ -1,16 +1,21 @@
 using System;
+using System.Collections.Generic;
 using static CSLox.TokenType;
 
 namespace CSLox
 {
-    internal class Interpreter : Expr.Visitor<object>
+    internal class Interpreter : Expr.Visitor<object>, Stmt.Visitor<VoidObject>
     {
-        internal void Interpret(Expr expression)
+        private LoxEnvironment loxEnvironment = new LoxEnvironment();
+
+        internal void Interpret(IEnumerable<Stmt> statements)
         {
             try
             {
-                object value = Evaluate(expression);
-                Console.WriteLine(Stringify(value));
+                foreach (Stmt statement in statements)
+                {
+                    Execute(statement);
+                }
             }
             catch (RuntimeError error)
             {
@@ -41,9 +46,14 @@ namespace CSLox
             return null;
         }
 
+        public object VisitVariableExpr(Expr.Variable expr)
+        {
+            return loxEnvironment.Get(expr.name);
+        }
+
         private static void CheckNumberOperand(Token _operator, object operand)
         {
-            if (operand is Double)
+            if (operand is double)
             {
                 return;
             }
@@ -98,7 +108,7 @@ namespace CSLox
             {
                 return "nil";
             }
-            
+
             return _object.ToString();
         }
 
@@ -110,6 +120,69 @@ namespace CSLox
         private object Evaluate(Expr expr)
         {
             return expr.Accept(this);
+        }
+
+        private void Execute(Stmt stmt)
+        {
+            stmt.Accept(this);
+        }
+
+        private void ExecuteBlock(IEnumerable<Stmt> statements, LoxEnvironment loxEnvironment)
+        {
+            LoxEnvironment previous = this.loxEnvironment;
+
+            try
+            {
+                this.loxEnvironment = loxEnvironment;
+
+                foreach (Stmt statement in statements)
+                {
+                    Execute(statement);
+                }
+            }
+            finally
+            {
+                this.loxEnvironment = previous;
+            }
+        }
+
+        public VoidObject VisitBlockStmt(Stmt.Block stmt)
+        {
+            ExecuteBlock(stmt.statements, new LoxEnvironment(loxEnvironment));
+            return null;
+        }
+
+        public VoidObject VisitExpressionStmt(Stmt.Expression stmt)
+        {
+            Evaluate(stmt.expression);
+            return null;
+        }
+
+        public VoidObject VisitPrintStmt(Stmt.Print stmt)
+        {
+            object value = Evaluate(stmt.expression);
+            Console.WriteLine(Stringify(value));
+            return null;
+        }
+
+        public VoidObject VisitVarStmt(Stmt.Var stmt)
+        {
+            object value = null;
+            if (stmt.initializer != null)
+            {
+                value = Evaluate(stmt.initializer);
+            }
+
+            loxEnvironment.Define(stmt.name.lexeme, value);
+            return null;
+        }
+
+        public object VisitAssignExpr(Expr.Assign expr)
+        {
+            object value = Evaluate(expr.value);
+
+            loxEnvironment.Assign(expr.name, value);
+            return value;
         }
 
         public object VisitBinaryExpr(Expr.Binary expr)

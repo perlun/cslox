@@ -3,7 +3,16 @@
 INDENT = ' ' * 4
 VISIBILITY = 'internal'
 
-Type = Struct.new(:class_name, :fields)
+class Type
+  attr_reader :class_name
+  attr_reader :fields
+
+  def initialize(class_name, *fields)
+    @class_name = class_name
+    @fields = fields.flatten
+  end
+end
+
 Field = Struct.new(:type, :name)
 
 def define_visitor(base_name, types)
@@ -74,6 +83,8 @@ def define_ast(output_dir, base_name, types)
 
   path = File.join(output_dir, base_name + ".cs");
   File.write(path, <<~EOF)
+using System.Collections.Generic;
+
 namespace CSLox
 {
 #{INDENT}#{VISIBILITY} abstract class #{base_name}
@@ -95,9 +106,29 @@ end
 output_dir = ARGV.pop
 
 define_ast(output_dir, "Expr", [
+  Type.new('Assign', Field.new('Token', 'name'), Field.new('Expr', 'value')),
+
   # operator is a reserved word in C#
-  Type.new('Binary', [ Field.new('Expr', 'left'), Field.new('Token', '_operator'), Field.new('Expr', 'right') ]),
-  Type.new('Grouping', [ Field.new('Expr', 'expression') ]),
-  Type.new('Literal', [ Field.new('object', 'value') ]),
-  Type.new('Unary', [ Field.new('Token', '_operator'), Field.new('Expr', 'right') ])
+  Type.new('Binary', [
+    Field.new('Expr', 'left'),
+    Field.new('Token', '_operator'),
+    Field.new('Expr', 'right')
+  ]),
+  Type.new('Grouping', Field.new('Expr', 'expression')),
+  Type.new('Literal', Field.new('object', 'value')),
+  Type.new('Unary', [
+    Field.new('Token', '_operator'),
+    Field.new('Expr', 'right')
+  ]),
+  Type.new('Variable', Field.new('Token', 'name'))
+])
+
+define_ast(output_dir, "Stmt", [
+  Type.new('Block', Field.new('List<Stmt>', 'statements')),
+  Type.new('Expression', Field.new('Expr', 'expression')),
+  Type.new('Print', Field.new('Expr', 'expression')),
+  Type.new('Var', [
+    Field.new('Token', 'name'),
+    Field.new('Expr', 'initializer')
+  ])
 ])

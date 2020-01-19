@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -8,8 +9,8 @@ namespace CSLox
     {
         private static readonly Interpreter interpreter = new Interpreter();
 
-        private static bool hadError = false;
-        static bool hadRuntimeError = false;
+        private static bool hadError;
+        private static bool hadRuntimeError;
 
         public static void Main(string[] args)
         {
@@ -63,7 +64,7 @@ namespace CSLox
 
             // For now, just print the tokens.
             var parser = new Parser(tokens);
-            Expr expression = parser.Parse();
+            IEnumerable<Stmt> statements = parser.Parse();
 
             // Stop if there was a syntax error.
             if (hadError)
@@ -71,7 +72,7 @@ namespace CSLox
                 return;
             }
 
-            interpreter.Interpret(expression);
+            interpreter.Interpret(statements);
         }
 
         internal static void Error(int line, string message)
@@ -82,7 +83,7 @@ namespace CSLox
         internal static void RuntimeError(RuntimeError error)
         {
             Console.WriteLine($"{error.Message}\n" +
-                              "[line {error.token.line}]");
+                              $"[line {error.token.line}]");
             hadRuntimeError = true;
         }
 

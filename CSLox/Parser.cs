@@ -18,38 +18,123 @@ namespace CSLox
             this.tokens = tokens;
         }
 
-        internal Expr Parse()
+        internal IEnumerable<Stmt> Parse()
         {
-            try
+            var statements = new List<Stmt>();
+
+            while (!IsAtEnd())
             {
-                return Expression();
+                statements.Add(Declaration());
             }
-            catch (ParseError)
-            {
-                return null;
-            }
+
+            return statements;
         }
 
         private Expr Expression()
         {
-            return Equality();
+            return Assignment();
+        }
+
+        private Stmt Declaration()
+        {
+            try
+            {
+                if (Match(VAR)) return VarDeclaration();
+
+                return Statement();
+            }
+            catch (ParseError error)
+            {
+                Synchronize();
+                return null;
+            }
+        }
+
+        private Stmt Statement()
+        {
+            if (Match(PRINT)) return PrintStatement();
+            if (Match(LEFT_BRACE)) return new Stmt.Block(Block());
+
+            return ExpressionStatement();
+        }
+
+        private Stmt PrintStatement()
+        {
+            Expr value = Expression();
+            consume(SEMICOLON, "Expect ';' after value.");
+            return new Stmt.Print(value);
+        }
+
+        private Stmt VarDeclaration()
+        {
+            Token name = consume(IDENTIFIER, "Expect variable name.");
+
+            Expr initializer = null;
+            if (Match(EQUAL))
+            {
+                initializer = Expression();
+            }
+
+            consume(SEMICOLON, "Expect ';' after variable declaration.");
+            return new Stmt.Var(name, initializer);
+        }
+
+        private Stmt ExpressionStatement()
+        {
+            Expr expr = Expression();
+            consume(SEMICOLON, "Expect ';' after expression.");
+            return new Stmt.Expression(expr);
+        }
+
+        private List<Stmt> Block()
+        {
+            var statements = new List<Stmt>();
+
+            while (!Check(RIGHT_BRACE) && !IsAtEnd())
+            {
+                statements.Add(Declaration());
+            }
+
+            consume(RIGHT_BRACE, "Expect '}' after block.");
+            return statements;
+        }
+
+        private Expr Assignment()
+        {
+            Expr expr = Equality();
+
+            if (Match(EQUAL))
+            {
+                Token equals = Previous();
+                Expr value = Assignment();
+
+                if (expr is Expr.Variable variable)
+                {
+                    Token name = variable.name;
+                    return new Expr.Assign(name, value);
+                }
+
+                Error(equals, "Invalid assignment target.");
+            }
+
+            return expr;
         }
 
         private Expr Equality()
         {
-            Expr expr = comparison();
+            Expr expr = Comparison();
 
             while (Match(BANG_EQUAL, EQUAL_EQUAL))
             {
                 Token _operator = Previous();
-                Expr right = comparison();
+                Expr right = Comparison();
                 expr = new Expr.Binary(expr, _operator, right);
             }
 
             return expr;
         }
 
-        private Expr comparison()
+        private Expr Comparison()
         {
             Expr expr = Addition();
 
@@ -112,6 +197,11 @@ namespace CSLox
             if (Match(NUMBER, STRING))
             {
                 return new Expr.Literal(Previous().literal);
+            }
+
+            if (Match(IDENTIFIER))
+            {
+                return new Expr.Variable(Previous());
             }
 
             if (Match(LEFT_PAREN))
