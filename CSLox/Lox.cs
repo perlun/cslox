@@ -12,7 +12,7 @@ namespace CSLox
         {
             if (args.Length > 1)
             {
-                Console.WriteLine("Usage: jlox [script]");
+                Console.WriteLine("Usage: cslox [script]");
                 Environment.Exit(64);
             }
             else if (args.Length == 1)
@@ -27,7 +27,7 @@ namespace CSLox
 
         private static void RunFile(string path)
         {
-            byte[] bytes = File.ReadAllBytes(path);
+            var bytes = File.ReadAllBytes(path);
             Run(Encoding.UTF8.GetString(bytes));
 
             // Indicate an error in the exit code.
@@ -54,21 +54,39 @@ namespace CSLox
             var tokens = scanner.ScanTokens();
 
             // For now, just print the tokens.
-            foreach (var token in tokens)
+            var parser = new Parser(tokens);
+            Expr expression = parser.Parse();
+
+            // Stop if there was a syntax error.
+            if (hadError)
             {
-                Console.WriteLine(token);
+                return;
             }
+
+            Console.WriteLine(new AstPrinter().Print(expression));
         }
 
-        internal static void Error(int line, String message)
+        internal static void Error(int line, string message)
         {
             Report(line, "", message);
         }
 
-        private static void Report(int line, String where, String message)
+        private static void Report(int line, string where, string message)
         {
             Console.Error.WriteLine($"[line {line}] Error{where}: {message}");
             hadError = true;
+        }
+
+        internal static void Error(Token token, string message)
+        {
+            if (token.type == TokenType.EOF)
+            {
+                Report(token.line, " at end", message);
+            }
+            else
+            {
+                Report(token.line, " at '" + token.lexeme + "'", message);
+            }
         }
     }
 }

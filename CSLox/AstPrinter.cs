@@ -5,7 +5,7 @@ namespace CSLox
     // Creates an unambiguous, if ugly, string representation of AST nodes.
     internal class AstPrinter : Expr.Visitor<string>
     {
-        private string Print(Expr expr)
+        internal string Print(Expr expr)
         {
             return expr.Accept(this);
         }
