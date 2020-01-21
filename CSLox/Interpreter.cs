@@ -117,7 +117,7 @@ namespace CSLox
             return Evaluate(expr.expression);
         }
 
-        private object Evaluate(Expr expr)
+        internal object Evaluate(Expr expr)
         {
             return expr.Accept(this);
         }

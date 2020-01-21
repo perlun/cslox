@@ -58,21 +58,46 @@ namespace CSLox
 
         private static void Run(string source)
         {
+            if (String.IsNullOrWhiteSpace(source))
+            {
+                return;
+            }
+
             var scanner = new Scanner(source);
 
             var tokens = scanner.ScanTokens();
 
             // For now, just print the tokens.
             var parser = new Parser(tokens);
-            IEnumerable<Stmt> statements = parser.Parse();
+            IEnumerable<Stmt> statements = parser.ParseStatements();
 
             // Stop if there was a syntax error.
-            if (hadError)
+            if (!hadError)
             {
-                return;
+                interpreter.Interpret(statements);
             }
+            else
+            {
+                // This was not a valid set of statements. But is it perhaps a valid expression? The parser is now
+                // at EOF and since we don't currently have any form of "rewind" functionality, the easiest approach
+                // is to just create a new parser at this point.
+                parser = new Parser(tokens);
+                Expr expression = parser.ParseExpression();
 
-            interpreter.Interpret(statements);
+                if (expression == null)
+                {
+                    // Likely not a valid expression. Errors are presumed to have been handled at this point, so we
+                    // can just return.
+                    return;
+                }
+
+                object result = interpreter.Evaluate(expression);
+
+                if (result != null)
+                {
+                    Console.WriteLine(result);
+                }
+            }
         }
 
         internal static void Error(int line, string message)
@@ -93,7 +118,7 @@ namespace CSLox
             hadError = true;
         }
 
-        internal static void Error(Token token, string message)
+        private static void Error(Token token, string message)
         {
             if (token.type == TokenType.EOF)
             {
@@ -103,6 +128,19 @@ namespace CSLox
             {
                 Report(token.line, " at '" + token.lexeme + "'", message);
             }
+        }
+
+        internal static void ParseError(Token token, string message, ParseErrorType? parseErrorType)
+        {
+            if (parseErrorType == ParseErrorType.MISSING_TRAILING_SEMICOLON)
+            {
+                // These errors are ignored; we will get them all them when we try to parse expressions as
+                // statements.
+                hadError = true;
+                return;
+            }
+
+            Error(token, message);
         }
     }
 }

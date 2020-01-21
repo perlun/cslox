@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using static CSLox.TokenType;
+using static CSLox.ParseErrorType;
 
 namespace CSLox
 {
@@ -8,6 +9,12 @@ namespace CSLox
     {
         private class ParseError : Exception
         {
+            public ParseErrorType? ParseErrorType { get; }
+
+            public ParseError(ParseErrorType? parseErrorType)
+            {
+                ParseErrorType = parseErrorType;
+            }
         }
 
         private readonly List<Token> tokens;
@@ -18,7 +25,7 @@ namespace CSLox
             this.tokens = tokens;
         }
 
-        internal IEnumerable<Stmt> Parse()
+        internal IEnumerable<Stmt> ParseStatements()
         {
             var statements = new List<Stmt>();
 
@@ -28,6 +35,18 @@ namespace CSLox
             }
 
             return statements;
+        }
+
+        internal Expr ParseExpression()
+        {
+            try
+            {
+                return Expression();
+            }
+            catch (ParseError)
+            {
+                return null;
+            }
         }
 
         private Expr Expression()
@@ -43,7 +62,7 @@ namespace CSLox
 
                 return Statement();
             }
-            catch (ParseError error)
+            catch (ParseError)
             {
                 Synchronize();
                 return null;
@@ -61,13 +80,13 @@ namespace CSLox
         private Stmt PrintStatement()
         {
             Expr value = Expression();
-            consume(SEMICOLON, "Expect ';' after value.");
+            Consume(SEMICOLON, "Expect ';' after value.");
             return new Stmt.Print(value);
         }
 
         private Stmt VarDeclaration()
         {
-            Token name = consume(IDENTIFIER, "Expect variable name.");
+            Token name = Consume(IDENTIFIER, "Expect variable name.");
 
             Expr initializer = null;
             if (Match(EQUAL))
@@ -75,14 +94,14 @@ namespace CSLox
                 initializer = Expression();
             }
 
-            consume(SEMICOLON, "Expect ';' after variable declaration.");
+            Consume(SEMICOLON, "Expect ';' after variable declaration.");
             return new Stmt.Var(name, initializer);
         }
 
         private Stmt ExpressionStatement()
         {
             Expr expr = Expression();
-            consume(SEMICOLON, "Expect ';' after expression.");
+            Consume(SEMICOLON, "Expect ';' after expression.", MISSING_TRAILING_SEMICOLON);
             return new Stmt.Expression(expr);
         }
 
@@ -95,7 +114,7 @@ namespace CSLox
                 statements.Add(Declaration());
             }
 
-            consume(RIGHT_BRACE, "Expect '}' after block.");
+            Consume(RIGHT_BRACE, "Expect '}' after block.");
             return statements;
         }
 
@@ -207,7 +226,7 @@ namespace CSLox
             if (Match(LEFT_PAREN))
             {
                 Expr expr = Expression();
-                consume(RIGHT_PAREN, "Expect ')' after expression.");
+                Consume(RIGHT_PAREN, "Expect ')' after expression.");
                 return new Expr.Grouping(expr);
             }
 
@@ -228,14 +247,14 @@ namespace CSLox
             return false;
         }
 
-        private Token consume(TokenType type, String message)
+        private Token Consume(TokenType type, string message, ParseErrorType? parseErrorType = null)
         {
             if (Check(type))
             {
                 return Advance();
             }
 
-            throw Error(Peek(), message);
+            throw Error(Peek(), message, parseErrorType);
         }
 
         private bool Check(TokenType type)
@@ -273,10 +292,10 @@ namespace CSLox
             return tokens[current - 1];
         }
 
-        private static ParseError Error(Token token, String message)
+        private static ParseError Error(Token token, string message, ParseErrorType? parseErrorType = null)
         {
-            Lox.Error(token, message);
-            return new ParseError();
+            Lox.ParseError(token, message, parseErrorType);
+            return new ParseError(parseErrorType);
         }
 
         private void Synchronize()
