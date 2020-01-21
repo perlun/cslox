@@ -10,6 +10,7 @@ namespace CSLox
             R VisitBinaryExpr(Binary expr);
             R VisitGroupingExpr(Grouping expr);
             R VisitLiteralExpr(Literal expr);
+            R VisitLogicalExpr(Logical expr);
             R VisitUnaryExpr(Unary expr);
             R VisitVariableExpr(Variable expr);
         }
@@ -73,6 +74,24 @@ namespace CSLox
             internal override R Accept<R>(Visitor<R> visitor)
             {
                 return visitor.VisitLiteralExpr(this);
+            }
+        }
+
+        internal class Logical : Expr
+        {
+            internal readonly Expr left;
+            internal readonly Token _operator;
+            internal readonly Expr right;
+
+            internal Logical(Expr left, Token _operator, Expr right) {
+                this.left = left;
+                this._operator = _operator;
+                this.right = right;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitLogicalExpr(this);
             }
         }
 

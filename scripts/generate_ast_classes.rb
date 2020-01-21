@@ -116,6 +116,11 @@ define_ast(output_dir, "Expr", [
   ]),
   Type.new('Grouping', Field.new('Expr', 'expression')),
   Type.new('Literal', Field.new('object', 'value')),
+  Type.new('Logical', [
+    Field.new('Expr', 'left'),
+    Field.new('Token', '_operator'),
+    Field.new('Expr', 'right')
+  ]),
   Type.new('Unary', [
     Field.new('Token', '_operator'),
     Field.new('Expr', 'right')
@@ -126,9 +131,15 @@ define_ast(output_dir, "Expr", [
 define_ast(output_dir, "Stmt", [
   Type.new('Block', Field.new('List<Stmt>', 'statements')),
   Type.new('Expression', Field.new('Expr', 'expression')),
+  Type.new('If', [
+    Field.new('Expr', 'condition'),
+    Field.new('Stmt', 'thenBranch'),
+    Field.new('Stmt', 'elseBranch')
+  ]),
   Type.new('Print', Field.new('Expr', 'expression')),
   Type.new('Var', [
     Field.new('Token', 'name'),
     Field.new('Expr', 'initializer')
-  ])
+  ]),
+  Type.new('While', Field.new('Expr', 'condition'), Field.new('Stmt', 'body'))
 ])

@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 
 namespace CSLox
@@ -35,6 +36,11 @@ namespace CSLox
             return expr.value.ToString();
         }
 
+        public string VisitLogicalExpr(Expr.Logical expr)
+        {
+            throw new NotImplementedException();
+        }
+
         public string VisitUnaryExpr(Expr.Unary expr)
         {
             return Parenthesize(expr._operator.lexeme, expr.right);
@@ -42,7 +48,7 @@ namespace CSLox
 
         public string VisitVariableExpr(Expr.Variable expr)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         private string Parenthesize(string name, params Expr[] exprs)

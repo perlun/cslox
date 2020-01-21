@@ -71,10 +71,89 @@ namespace CSLox
 
         private Stmt Statement()
         {
+            if (Match(FOR)) return ForStatement();
+            if (Match(IF)) return IfStatement();
             if (Match(PRINT)) return PrintStatement();
+            if (Match(WHILE)) return WhileStatement();
             if (Match(LEFT_BRACE)) return new Stmt.Block(Block());
 
             return ExpressionStatement();
+        }
+
+        private Stmt ForStatement()
+        {
+            // The "for" implementation is a bit special in that it doesn't use any special AST nodes of its own.
+            // Instead, it just desugars the for loop into already existing elements in our toolbox.
+            // More details: http://craftinginterpreters.com/control-flow.html#desugaring
+            Consume(LEFT_PAREN, "Expect '(' after 'for'.");
+
+            Stmt initializer;
+            if (Match(SEMICOLON))
+            {
+                initializer = null;
+            }
+            else if (Match(VAR))
+            {
+                initializer = VarDeclaration();
+            }
+            else
+            {
+                initializer = ExpressionStatement();
+            }
+
+            Expr condition = null;
+            if (!Check(SEMICOLON))
+            {
+                condition = Expression();
+            }
+
+            Consume(SEMICOLON, "Expect ';' after loop condition.");
+
+            Expr increment = null;
+            if (!Check(RIGHT_PAREN))
+            {
+                increment = Expression();
+            }
+
+            Consume(RIGHT_PAREN, "Expect ')' after for clauses.");
+
+            Stmt body = Statement();
+
+            if (increment != null)
+            {
+                body = new Stmt.Block(new List<Stmt>
+                {
+                    body,
+                    new Stmt.Expression(increment)
+                });
+            }
+
+            if (condition == null) condition = new Expr.Literal(true);
+            body = new Stmt.While(condition, body);
+
+            if (initializer != null)
+            {
+                body = new Stmt.Block(new List<Stmt> {initializer, body});
+            }
+
+            return body;
+        }
+
+        private Stmt IfStatement()
+        {
+            Consume(LEFT_PAREN, "Expect '(' after 'if'.");
+            Expr condition = Expression();
+            Consume(RIGHT_PAREN, "Expect ')' after if condition.");
+
+            Stmt thenBranch = Statement();
+            Stmt elseBranch = null;
+
+            if (Match(ELSE))
+            {
+                elseBranch = Statement();
+            }
+
+            return new Stmt.If(condition, thenBranch, elseBranch);
         }
 
         private Stmt PrintStatement()
@@ -96,6 +175,16 @@ namespace CSLox
 
             Consume(SEMICOLON, "Expect ';' after variable declaration.");
             return new Stmt.Var(name, initializer);
+        }
+
+        private Stmt WhileStatement()
+        {
+            Consume(LEFT_PAREN, "Expect '(' after 'while'.");
+            Expr condition = Expression();
+            Consume(RIGHT_PAREN, "Expect ')' after condition.");
+            Stmt body = Statement();
+
+            return new Stmt.While(condition, body);
         }
 
         private Stmt ExpressionStatement()
@@ -120,7 +209,7 @@ namespace CSLox
 
         private Expr Assignment()
         {
-            Expr expr = Equality();
+            Expr expr = Or();
 
             if (Match(EQUAL))
             {
@@ -134,6 +223,34 @@ namespace CSLox
                 }
 
                 Error(equals, "Invalid assignment target.");
+            }
+
+            return expr;
+        }
+
+        private Expr Or()
+        {
+            Expr expr = And();
+
+            while (Match(OR))
+            {
+                Token _operator = Previous();
+                Expr right = And();
+                expr = new Expr.Logical(expr, _operator, right);
+            }
+
+            return expr;
+        }
+
+        private Expr And()
+        {
+            Expr expr = Equality();
+
+            while (Match(AND))
+            {
+                Token _operator = Previous();
+                Expr right = Equality();
+                expr = new Expr.Logical(expr, _operator, right);
             }
 
             return expr;
@@ -233,6 +350,11 @@ namespace CSLox
             throw Error(Peek(), "Expect expression.");
         }
 
+        /// <summary>
+        /// Matches the given token type(s), at the current position. If a matching token is found, it gets consumed.
+        /// </summary>
+        /// <param name="types">One or more token types to match</param>
+        /// <returns>true if a matching token was found and consumed, false otherwise</returns>
         private bool Match(params TokenType[] types)
         {
             foreach (TokenType type in types)
@@ -282,11 +404,19 @@ namespace CSLox
             return Peek().type == EOF;
         }
 
+        /// <summary>
+        /// Returns the token at the current position.
+        /// </summary>
+        /// <returns>A Token</returns>
         private Token Peek()
         {
             return tokens[current];
         }
 
+        /// <summary>
+        /// Returns the token right before the current position.
+        /// </summary>
+        /// <returns>A Token</returns>
         private Token Previous()
         {
             return tokens[current - 1];

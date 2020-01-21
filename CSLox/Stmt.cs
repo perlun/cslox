@@ -8,8 +8,10 @@ namespace CSLox
         {
             R VisitBlockStmt(Block stmt);
             R VisitExpressionStmt(Expression stmt);
+            R VisitIfStmt(If stmt);
             R VisitPrintStmt(Print stmt);
             R VisitVarStmt(Var stmt);
+            R VisitWhileStmt(While stmt);
         }
 
         internal class Block : Stmt
@@ -40,6 +42,24 @@ namespace CSLox
             }
         }
 
+        internal class If : Stmt
+        {
+            internal readonly Expr condition;
+            internal readonly Stmt thenBranch;
+            internal readonly Stmt elseBranch;
+
+            internal If(Expr condition, Stmt thenBranch, Stmt elseBranch) {
+                this.condition = condition;
+                this.thenBranch = thenBranch;
+                this.elseBranch = elseBranch;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitIfStmt(this);
+            }
+        }
+
         internal class Print : Stmt
         {
             internal readonly Expr expression;
@@ -67,6 +87,22 @@ namespace CSLox
             internal override R Accept<R>(Visitor<R> visitor)
             {
                 return visitor.VisitVarStmt(this);
+            }
+        }
+
+        internal class While : Stmt
+        {
+            internal readonly Expr condition;
+            internal readonly Stmt body;
+
+            internal While(Expr condition, Stmt body) {
+                this.condition = condition;
+                this.body = body;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitWhileStmt(this);
             }
         }
 

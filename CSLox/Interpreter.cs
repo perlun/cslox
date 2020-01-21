@@ -28,6 +28,26 @@ namespace CSLox
             return expr.value;
         }
 
+        public object VisitLogicalExpr(Expr.Logical expr)
+        {
+            object left = Evaluate(expr.left);
+
+            if (expr._operator.type == OR)
+            {
+                if (IsTruthy(left)) return left;
+            }
+            else if (expr._operator.type == AND)
+            {
+                if (!IsTruthy(left)) return left;
+            }
+            else
+            {
+                throw new RuntimeError(expr._operator, $"Unsupported logical operator: {expr._operator.type}");
+            }
+
+            return Evaluate(expr.right);
+        }
+
         public object VisitUnaryExpr(Expr.Unary expr)
         {
             object right = Evaluate(expr.right);
@@ -158,6 +178,20 @@ namespace CSLox
             return null;
         }
 
+        public VoidObject VisitIfStmt(Stmt.If stmt)
+        {
+            if (IsTruthy(Evaluate(stmt.condition)))
+            {
+                Execute(stmt.thenBranch);
+            }
+            else if (stmt.elseBranch != null)
+            {
+                Execute(stmt.elseBranch);
+            }
+
+            return null;
+        }
+
         public VoidObject VisitPrintStmt(Stmt.Print stmt)
         {
             object value = Evaluate(stmt.expression);
@@ -174,6 +208,16 @@ namespace CSLox
             }
 
             loxEnvironment.Define(stmt.name.lexeme, value);
+            return null;
+        }
+
+        public VoidObject VisitWhileStmt(Stmt.While stmt)
+        {
+            while (IsTruthy(Evaluate(stmt.condition)))
+            {
+                Execute(stmt.body);
+            }
+
             return null;
         }
 
