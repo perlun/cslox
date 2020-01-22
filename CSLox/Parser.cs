@@ -58,6 +58,7 @@ namespace CSLox
         {
             try
             {
+                if (Match(FUN)) return Function("function");
                 if (Match(VAR)) return VarDeclaration();
 
                 return Statement();
@@ -74,6 +75,7 @@ namespace CSLox
             if (Match(FOR)) return ForStatement();
             if (Match(IF)) return IfStatement();
             if (Match(PRINT)) return PrintStatement();
+            if (Match(RETURN)) return ReturnStatement();
             if (Match(WHILE)) return WhileStatement();
             if (Match(LEFT_BRACE)) return new Stmt.Block(Block());
 
@@ -163,6 +165,20 @@ namespace CSLox
             return new Stmt.Print(value);
         }
 
+        private Stmt ReturnStatement()
+        {
+            Token keyword = Previous();
+            Expr value = null;
+
+            if (!Check(SEMICOLON))
+            {
+                value = Expression();
+            }
+
+            Consume(SEMICOLON, "Expect ';' after return value.");
+            return new Stmt.Return(keyword, value);
+        }
+
         private Stmt VarDeclaration()
         {
             Token name = Consume(IDENTIFIER, "Expect variable name.");
@@ -192,6 +208,32 @@ namespace CSLox
             Expr expr = Expression();
             Consume(SEMICOLON, "Expect ';' after expression.", MISSING_TRAILING_SEMICOLON);
             return new Stmt.Expression(expr);
+        }
+
+        private Stmt.Function Function(string kind)
+        {
+            Token name = Consume(IDENTIFIER, "Expect " + kind + " name.");
+            Consume(LEFT_PAREN, "Expect '(' after " + kind + " name.");
+            var parameters = new List<Token>();
+
+            if (!Check(RIGHT_PAREN))
+            {
+                do
+                {
+                    if (parameters.Count >= 255)
+                    {
+                        Error(Peek(), "Cannot have more than 255 parameters.");
+                    }
+
+                    parameters.Add(Consume(IDENTIFIER, "Expect parameter name."));
+                } while (Match(COMMA));
+            }
+
+            Consume(RIGHT_PAREN, "Expect ')' after parameters.");
+
+            Consume(LEFT_BRACE, "Expect '{' before " + kind + " body.");
+            List<Stmt> body = Block();
+            return new Stmt.Function(name, parameters, body);
         }
 
         private List<Stmt> Block()
@@ -321,7 +363,48 @@ namespace CSLox
                 return new Expr.Unary(_operator, right);
             }
 
-            return Primary();
+            return Call();
+        }
+
+        private Expr Call()
+        {
+            Expr expr = Primary();
+
+            while (true)
+            {
+                if (Match(LEFT_PAREN))
+                {
+                    expr = FinishCall(expr);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return expr;
+        }
+
+        private Expr FinishCall(Expr callee)
+        {
+            var arguments = new List<Expr>();
+
+            if (!Check(RIGHT_PAREN))
+            {
+                do
+                {
+                    if (arguments.Count >= 255)
+                    {
+                        Error(Peek(), "Cannot have more than 255 arguments.");
+                    }
+
+                    arguments.Add(Expression());
+                } while (Match(COMMA));
+            }
+
+            Token paren = Consume(RIGHT_PAREN, "Expect ')' after arguments.");
+
+            return new Expr.Call(callee, paren, arguments);
         }
 
         private Expr Primary()
@@ -352,6 +435,8 @@ namespace CSLox
 
         /// <summary>
         /// Matches the given token type(s), at the current position. If a matching token is found, it gets consumed.
+        ///
+        /// For a non-consuming version of this, see <see cref="Peek"/>.
         /// </summary>
         /// <param name="types">One or more token types to match</param>
         /// <returns>true if a matching token was found and consumed, false otherwise</returns>
@@ -369,6 +454,15 @@ namespace CSLox
             return false;
         }
 
+        /// <summary>
+        /// Matches the given token type at the current position. If the current token does not match, an exception is
+        /// thrown.
+        /// </summary>
+        /// <param name="type">the type of token to match</param>
+        /// <param name="message">the error message to use if the token does not match</param>
+        /// <param name="parseErrorType">an optional parameter indicating the type of parse error</param>
+        /// <returns>the matched token</returns>
+        /// <exception cref="ParseError">if the token does not match</exception>
         private Token Consume(TokenType type, string message, ParseErrorType? parseErrorType = null)
         {
             if (Check(type))
@@ -379,6 +473,12 @@ namespace CSLox
             throw Error(Peek(), message, parseErrorType);
         }
 
+        /// <summary>
+        /// Checks if the current token matches the provided TokenType. Similar to <see cref="Match"/> but does not
+        /// consume the token on matches.
+        /// </summary>
+        /// <param name="type">the TokenType to match</param>
+        /// <returns>true if it matches, false otherwise</returns>
         private bool Check(TokenType type)
         {
             if (IsAtEnd())

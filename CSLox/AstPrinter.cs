@@ -13,12 +13,17 @@ namespace CSLox
 
         public string VisitAssignExpr(Expr.Assign expr)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public string VisitBinaryExpr(Expr.Binary expr)
         {
             return Parenthesize(expr._operator.lexeme, expr.left, expr.right);
+        }
+
+        public string VisitCallExpr(Expr.Call expr)
+        {
+            throw new NotImplementedException();
         }
 
         public string VisitGroupingExpr(Expr.Grouping expr)

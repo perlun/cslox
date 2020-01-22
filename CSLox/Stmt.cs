@@ -8,8 +8,10 @@ namespace CSLox
         {
             R VisitBlockStmt(Block stmt);
             R VisitExpressionStmt(Expression stmt);
+            R VisitFunctionStmt(Function stmt);
             R VisitIfStmt(If stmt);
             R VisitPrintStmt(Print stmt);
+            R VisitReturnStmt(Return stmt);
             R VisitVarStmt(Var stmt);
             R VisitWhileStmt(While stmt);
         }
@@ -42,6 +44,24 @@ namespace CSLox
             }
         }
 
+        internal class Function : Stmt
+        {
+            internal readonly Token name;
+            internal readonly List<Token> _params;
+            internal readonly List<Stmt> body;
+
+            internal Function(Token name, List<Token> _params, List<Stmt> body) {
+                this.name = name;
+                this._params = _params;
+                this.body = body;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitFunctionStmt(this);
+            }
+        }
+
         internal class If : Stmt
         {
             internal readonly Expr condition;
@@ -71,6 +91,22 @@ namespace CSLox
             internal override R Accept<R>(Visitor<R> visitor)
             {
                 return visitor.VisitPrintStmt(this);
+            }
+        }
+
+        internal class Return : Stmt
+        {
+            internal readonly Token keyword;
+            internal readonly Expr value;
+
+            internal Return(Token keyword, Expr value) {
+                this.keyword = keyword;
+                this.value = value;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitReturnStmt(this);
             }
         }
 

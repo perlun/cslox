@@ -6,7 +6,34 @@ namespace CSLox
 {
     internal class Interpreter : Expr.Visitor<object>, Stmt.Visitor<VoidObject>
     {
-        private LoxEnvironment loxEnvironment = new LoxEnvironment();
+        private readonly LoxEnvironment globals = new LoxEnvironment();
+
+        private LoxEnvironment loxEnvironment;
+
+        public Interpreter()
+        {
+            loxEnvironment = globals;
+
+            globals.Define("clock", new ClockCallable());
+        }
+
+        private class ClockCallable : ILoxCallable
+        {
+            public int Arity()
+            {
+                return 0;
+            }
+
+            public object Call(Interpreter interpreter, List<Object> arguments)
+            {
+                return new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds() / 1000.0;
+            }
+
+            public override string ToString()
+            {
+                return "<native fn>";
+            }
+        }
 
         internal void Interpret(IEnumerable<Stmt> statements)
         {
@@ -147,7 +174,7 @@ namespace CSLox
             stmt.Accept(this);
         }
 
-        private void ExecuteBlock(IEnumerable<Stmt> statements, LoxEnvironment loxEnvironment)
+        internal void ExecuteBlock(IEnumerable<Stmt> statements, LoxEnvironment loxEnvironment)
         {
             LoxEnvironment previous = this.loxEnvironment;
 
@@ -178,6 +205,13 @@ namespace CSLox
             return null;
         }
 
+        public VoidObject VisitFunctionStmt(Stmt.Function stmt)
+        {
+            var function = new LoxFunction(stmt, loxEnvironment);
+            loxEnvironment.Define(stmt.name.lexeme, function);
+            return null;
+        }
+
         public VoidObject VisitIfStmt(Stmt.If stmt)
         {
             if (IsTruthy(Evaluate(stmt.condition)))
@@ -197,6 +231,14 @@ namespace CSLox
             object value = Evaluate(stmt.expression);
             Console.WriteLine(Stringify(value));
             return null;
+        }
+
+        public VoidObject VisitReturnStmt(Stmt.Return stmt)
+        {
+            object value = null;
+            if (stmt.value != null) value = Evaluate(stmt.value);
+
+            throw new Return(value);
         }
 
         public VoidObject VisitVarStmt(Stmt.Var stmt)
@@ -278,6 +320,33 @@ namespace CSLox
 
             // Unreachable.
             return null;
+        }
+
+        public object VisitCallExpr(Expr.Call expr)
+        {
+            object callee = Evaluate(expr.callee);
+
+            var arguments = new List<object>();
+
+            foreach (Expr argument in expr.arguments)
+            {
+                arguments.Add(Evaluate(argument));
+            }
+
+            if (!(callee is ILoxCallable))
+            {
+                throw new RuntimeError(expr.paren, "Can only call functions and classes.");
+            }
+
+            var function = (ILoxCallable) callee;
+
+            if (arguments.Count != function.Arity())
+            {
+                throw new RuntimeError(expr.paren, "Expected " + function.Arity() + " arguments but got " +
+                                                   arguments.Count + ".");
+            }
+
+            return function.Call(this, arguments);
         }
     }
 }

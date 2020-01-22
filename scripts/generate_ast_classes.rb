@@ -13,7 +13,15 @@ class Type
   end
 end
 
-Field = Struct.new(:type, :name)
+class Field
+  attr_reader :type
+  attr_reader :name
+
+  def initialize(type, name)
+    @type = type
+    @name = name
+  end
+end
 
 def define_visitor(base_name, types)
   stream = StringIO.new
@@ -105,14 +113,22 @@ end
 
 output_dir = ARGV.pop
 
+#
+# Certain names like _params and _operator are prefixed, since they
+# clash with C# reserved words.
+#
+
 define_ast(output_dir, "Expr", [
   Type.new('Assign', Field.new('Token', 'name'), Field.new('Expr', 'value')),
-
-  # operator is a reserved word in C#
   Type.new('Binary', [
     Field.new('Expr', 'left'),
     Field.new('Token', '_operator'),
     Field.new('Expr', 'right')
+  ]),
+  Type.new('Call', [
+    Field.new('Expr', 'callee'),
+    Field.new('Token', 'paren'),
+    Field.new('List<Expr>', 'arguments')
   ]),
   Type.new('Grouping', Field.new('Expr', 'expression')),
   Type.new('Literal', Field.new('object', 'value')),
@@ -131,12 +147,18 @@ define_ast(output_dir, "Expr", [
 define_ast(output_dir, "Stmt", [
   Type.new('Block', Field.new('List<Stmt>', 'statements')),
   Type.new('Expression', Field.new('Expr', 'expression')),
+  Type.new('Function', [
+    Field.new('Token', 'name'),
+    Field.new('List<Token>', '_params'),
+    Field.new('List<Stmt>', 'body')
+  ]),
   Type.new('If', [
     Field.new('Expr', 'condition'),
     Field.new('Stmt', 'thenBranch'),
     Field.new('Stmt', 'elseBranch')
   ]),
   Type.new('Print', Field.new('Expr', 'expression')),
+  Type.new('Return', Field.new('Token', 'keyword'), Field.new('Expr', 'value')),
   Type.new('Var', [
     Field.new('Token', 'name'),
     Field.new('Expr', 'initializer')

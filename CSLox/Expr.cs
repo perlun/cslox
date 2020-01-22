@@ -8,6 +8,7 @@ namespace CSLox
         {
             R VisitAssignExpr(Assign expr);
             R VisitBinaryExpr(Binary expr);
+            R VisitCallExpr(Call expr);
             R VisitGroupingExpr(Grouping expr);
             R VisitLiteralExpr(Literal expr);
             R VisitLogicalExpr(Logical expr);
@@ -46,6 +47,24 @@ namespace CSLox
             internal override R Accept<R>(Visitor<R> visitor)
             {
                 return visitor.VisitBinaryExpr(this);
+            }
+        }
+
+        internal class Call : Expr
+        {
+            internal readonly Expr callee;
+            internal readonly Token paren;
+            internal readonly List<Expr> arguments;
+
+            internal Call(Expr callee, Token paren, List<Expr> arguments) {
+                this.callee = callee;
+                this.paren = paren;
+                this.arguments = arguments;
+            }
+
+            internal override R Accept<R>(Visitor<R> visitor)
+            {
+                return visitor.VisitCallExpr(this);
             }
         }
 
