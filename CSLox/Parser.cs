@@ -25,7 +25,7 @@ namespace CSLox
             this.tokens = tokens;
         }
 
-        internal IEnumerable<Stmt> ParseStatements()
+        internal IList<Stmt> ParseStatements()
         {
             var statements = new List<Stmt>();
 

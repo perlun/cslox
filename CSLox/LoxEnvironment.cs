@@ -18,6 +18,27 @@ namespace CSLox
             values[name] = value;
         }
 
+        internal object GetAt(int distance, string name)
+        {
+            return Ancestor(distance).values[name];
+        }
+
+        internal void AssignAt(int distance, Token name, object value)
+        {
+            Ancestor(distance).values[name.lexeme] = value;
+        }
+
+        private LoxEnvironment Ancestor(int distance)
+        {
+            LoxEnvironment environment = this;
+            for (int i = 0; i < distance; i++)
+            {
+                environment = environment.enclosing;
+            }
+
+            return environment;
+        }
+
         internal object Get(Token name)
         {
             if (values.ContainsKey(name.lexeme))

@@ -7,6 +7,7 @@ namespace CSLox
     internal class Interpreter : Expr.Visitor<object>, Stmt.Visitor<VoidObject>
     {
         private readonly LoxEnvironment globals = new LoxEnvironment();
+        private readonly IDictionary<Expr, int> locals = new Dictionary<Expr, int>();
 
         private LoxEnvironment loxEnvironment;
 
@@ -95,7 +96,19 @@ namespace CSLox
 
         public object VisitVariableExpr(Expr.Variable expr)
         {
-            return loxEnvironment.Get(expr.name);
+            return LookUpVariable(expr.name, expr);
+        }
+
+        private object LookUpVariable(Token name, Expr expr)
+        {
+            if (locals.TryGetValue(expr, out int distance))
+            {
+                return loxEnvironment.GetAt(distance, name.lexeme);
+            }
+            else
+            {
+                return globals.Get(name);
+            }
         }
 
         private static void CheckNumberOperand(Token _operator, object operand)
@@ -172,6 +185,11 @@ namespace CSLox
         private void Execute(Stmt stmt)
         {
             stmt.Accept(this);
+        }
+
+        internal void Resolve(Expr expr, int depth)
+        {
+            locals[expr] = depth;
         }
 
         internal void ExecuteBlock(IEnumerable<Stmt> statements, LoxEnvironment loxEnvironment)
@@ -267,7 +285,15 @@ namespace CSLox
         {
             object value = Evaluate(expr.value);
 
-            loxEnvironment.Assign(expr.name, value);
+            if (locals.TryGetValue(expr, out int distance))
+            {
+                loxEnvironment.AssignAt(distance, expr.name, value);
+            }
+            else
+            {
+                globals.Assign(expr.name, value);
+            }
+
             return value;
         }
 

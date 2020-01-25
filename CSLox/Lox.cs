@@ -69,11 +69,17 @@ namespace CSLox
 
             // For now, just print the tokens.
             var parser = new Parser(tokens);
-            IEnumerable<Stmt> statements = parser.ParseStatements();
+            var statements = parser.ParseStatements();
 
             // Stop if there was a syntax error.
             if (!hadError)
             {
+                var resolver = new Resolver(interpreter);
+                resolver.Resolve(statements);
+
+                // Stop if there was a resolution error.
+                if (hadError) return;
+
                 interpreter.Interpret(statements);
             }
             else
@@ -91,6 +97,8 @@ namespace CSLox
                     return;
                 }
 
+                // TODO: we don't run the resolver in this case, which essentially means that we will be unable to
+                // TODO: refer to local variables.
                 object result = interpreter.Evaluate(expression);
 
                 if (result != null)
@@ -118,7 +126,7 @@ namespace CSLox
             hadError = true;
         }
 
-        private static void Error(Token token, string message)
+        internal static void Error(Token token, string message)
         {
             if (token.type == TokenType.EOF)
             {
